@@ -5,7 +5,7 @@ apiVersion: v2
 name: ovn-kubernetes
 description: A Helm chart for deploying ovn-kubernetes CNI
 type: application
-version: 2.4.2
+version: 2.4.99
 keywords:
 - SDN
 - SDNaaS
