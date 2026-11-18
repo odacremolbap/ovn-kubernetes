@@ -40,9 +40,11 @@ spec:
     matchLabels:
       app: ovnkube-node-dpu-host
   updateStrategy:
-    type: RollingUpdate
+    type: {{ .Values.updateStrategy.type }}
+    {{- if eq .Values.updateStrategy.type "RollingUpdate" }}
     rollingUpdate:
-      maxUnavailable: 25%
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+    {{- end }}
   template:
     metadata:
       labels:
@@ -89,6 +91,20 @@ spec:
           # ovnkube-node-liveness-check.sh checks
           # - 10-ovn-kubernetes.conf is present
           # - ovn-cni-server.sock is serving cni requests
+          {{- with .Values.startupProbe }}
+          # The startup probe runs the same check. The kubelet runs neither liveness nor
+          # readiness until it passes, which gives a slow start periodSeconds x
+          # failureThreshold instead of the liveness probe's 90 to 120 seconds.
+          startupProbe:
+            exec:
+              command:
+                - /bin/bash
+                - /root/ovnkube-node-liveness-check.sh
+            failureThreshold: {{ .failureThreshold }}
+            periodSeconds: {{ .periodSeconds }}
+            successThreshold: 1
+            timeoutSeconds: {{ .timeoutSeconds }}
+          {{- end }}
           livenessProbe:
             exec:
               command:

@@ -42,9 +42,11 @@ spec:
       app: ovnkube-node
   minReadySeconds: 90
   updateStrategy:
-    type: RollingUpdate
+    type: {{ .Values.updateStrategy.type }}
+    {{- if eq .Values.updateStrategy.type "RollingUpdate" }}
     rollingUpdate:
-      maxUnavailable: 25%
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+    {{- end }}
   template:
     metadata:
       labels:
@@ -597,6 +599,20 @@ spec:
         # ovnkube-node-liveness-check.sh checks
         # - 10-ovn-kubernetes.conf is present
         # - ovn-cni-server.sock is serving cni requests
+        {{- with .Values.ovnkubeSingleNodeZone.startupProbe }}
+        # The startup probe runs the same check. The kubelet runs neither liveness nor
+        # readiness until it passes, which gives a slow start periodSeconds x
+        # failureThreshold instead of the liveness probe's 90 to 120 seconds.
+        startupProbe:
+          exec:
+            command:
+            - /bin/bash
+            - /root/ovnkube-node-liveness-check.sh
+          failureThreshold: {{ .failureThreshold }}
+          periodSeconds: {{ .periodSeconds }}
+          successThreshold: 1
+          timeoutSeconds: {{ .timeoutSeconds }}
+        {{- end }}
         livenessProbe:
           exec:
             command:
@@ -606,7 +622,7 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 30
           successThreshold: 1
-          timeoutSeconds: 5  
+          timeoutSeconds: 5
         # ovnkube-node-readiness-check.sh checks
         # - whether the metrics server is running since it is one of the last things we do,
         # - also checks if we can access KUBERNETES_SERVICE_HOST:KUBERNETES_SERVICE_PORT
