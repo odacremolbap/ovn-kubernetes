@@ -41,11 +41,13 @@ spec:
     matchLabels:
       app: ovnkube-node
   minReadySeconds: 90
+  {{- $updateStrategy := .Values.updateStrategy | default dict }}
+  {{- $updateType := $updateStrategy.type | default "RollingUpdate" }}
   updateStrategy:
-    type: {{ .Values.updateStrategy.type }}
-    {{- if eq .Values.updateStrategy.type "RollingUpdate" }}
+    type: {{ $updateType }}
+    {{- if eq $updateType "RollingUpdate" }}
     rollingUpdate:
-      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+      maxUnavailable: {{ ($updateStrategy.rollingUpdate | default dict).maxUnavailable | default "5%" }}
     {{- end }}
   template:
     metadata:
@@ -599,20 +601,19 @@ spec:
         # ovnkube-node-liveness-check.sh checks
         # - 10-ovn-kubernetes.conf is present
         # - ovn-cni-server.sock is serving cni requests
-        {{- with .Values.ovnkubeSingleNodeZone.startupProbe }}
         # The startup probe runs the same check. The kubelet runs neither liveness nor
         # readiness until it passes, which gives a slow start periodSeconds x
         # failureThreshold instead of the liveness probe's 90 to 120 seconds.
+        {{- $startupProbe := .Values.ovnkubeSingleNodeZone.startupProbe | default dict }}
         startupProbe:
           exec:
             command:
             - /bin/bash
             - /root/ovnkube-node-liveness-check.sh
-          failureThreshold: {{ .failureThreshold }}
-          periodSeconds: {{ .periodSeconds }}
+          failureThreshold: {{ $startupProbe.failureThreshold | default 180 }}
+          periodSeconds: {{ $startupProbe.periodSeconds | default 10 }}
           successThreshold: 1
-          timeoutSeconds: {{ .timeoutSeconds }}
-        {{- end }}
+          timeoutSeconds: {{ $startupProbe.timeoutSeconds | default 5 }}
         livenessProbe:
           exec:
             command:

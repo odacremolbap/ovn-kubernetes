@@ -30,7 +30,7 @@ mgmtPortVFsCount: 1
 # config present, CNI server socket answering) and holds off the liveness and
 # readiness probes until it passes, so a start that is slow because the API servers
 # are overloaded is not killed. The start-up budget is periodSeconds x
-# failureThreshold, 30 minutes by default. Set to null to drop the probe.
+# failureThreshold, 30 minutes by default.
 startupProbe:
   periodSeconds: 10
   timeoutSeconds: 5
