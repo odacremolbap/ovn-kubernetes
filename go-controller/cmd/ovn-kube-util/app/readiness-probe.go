@@ -15,6 +15,14 @@ import (
 	"github.com/ovn-kubernetes/ovn-kubernetes/go-controller/pkg/util"
 )
 
+// readinessCallTimeout is the per-call timeout, in seconds, for the appctl calls
+// to ovn-controller and ovn-northd themselves. Both answer appctl calls from their
+// main loop, so a call waits while they recompute logical flows, which takes
+// several seconds on clusters with thousands of nodes (up to 10.8 s per
+// ovn-controller loop at 5,000 nodes). The calls run one after another, so the
+// kubelet's timeoutSeconds for these probes must cover their sum.
+const readinessCallTimeout = 12
+
 type readinessFunc func(string) error
 
 var callbacks = map[string]readinessFunc{
@@ -28,13 +36,13 @@ var callbacks = map[string]readinessFunc{
 
 func ovnControllerReadiness(target string) error {
 	// Check if ovn-controller is connected to OVN SB
-	output, _, err := util.RunOVSAppctlWithTimeout(5, "-t", target, "connection-status")
+	output, _, err := util.RunOVSAppctlWithTimeout(readinessCallTimeout, "-t", target, "connection-status")
 	if err != nil {
 		return fmt.Errorf("failed getting connection status of %q: (%v)", target, err)
 	} else if output != "connected" {
 		return fmt.Errorf("%q is not connected to OVN SB database, status: (%s)", target, output)
 	}
-	result, _, err := util.RunOVSAppctlWithTimeout(5, "-t", target, "coverage/read-counter", "lflow_run")
+	result, _, err := util.RunOVSAppctlWithTimeout(readinessCallTimeout, "-t", target, "coverage/read-counter", "lflow_run")
 	if err != nil {
 		return fmt.Errorf("failed getting coverage/read-counter of %q: (%v)", target, err)
 	} else if result == "0" {
@@ -112,7 +120,7 @@ func ovnSBDBReadiness(target string) error {
 }
 
 func ovnNorthdReadiness(target string) error {
-	stdout, _, err := util.RunOVNAppctlWithTimeout(5, "-t", target, "status")
+	stdout, _, err := util.RunOVNAppctlWithTimeout(readinessCallTimeout, "-t", target, "status")
 	if err != nil {
 		return fmt.Errorf("failed to get status from %s: (%v)", target, err)
 	} else if strings.HasPrefix(stdout, "Status") {
@@ -124,13 +132,13 @@ func ovnNorthdReadiness(target string) error {
 	} else {
 		return fmt.Errorf("failed to get status from %s", target)
 	}
-	nbConnectionStatus, _, err := util.RunOVNAppctlWithTimeout(5, "-t", target, "nb-connection-status")
+	nbConnectionStatus, _, err := util.RunOVNAppctlWithTimeout(readinessCallTimeout, "-t", target, "nb-connection-status")
 	if err != nil {
 		return fmt.Errorf("failed to get nb-connection-status from %s: (%v)", target, err)
 	} else if nbConnectionStatus != "connected" {
 		return fmt.Errorf("%s nb-connection-status is %s", target, nbConnectionStatus)
 	}
-	sbConnectionStatus, _, err := util.RunOVNAppctlWithTimeout(5, "-t", target, "sb-connection-status")
+	sbConnectionStatus, _, err := util.RunOVNAppctlWithTimeout(readinessCallTimeout, "-t", target, "sb-connection-status")
 	if err != nil {
 		return fmt.Errorf("failed to get sb-connection-status from %s: (%v)", target, err)
 	} else if sbConnectionStatus != "connected" {
