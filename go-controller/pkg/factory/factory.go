@@ -2242,10 +2242,11 @@ func (wf *WatchFactory) IPReservationInformer() ipresvinformer.IPReservationInfo
 	return wf.ipresvFactory.K8s().V1beta1().IPReservations()
 }
 
-// withServiceNameSelector returns a LabelSelector (added to the
+// withServiceNameAndNoHeadlessServiceSelector returns a LabelSelector (added to the
 // watcher for EndpointSlices) that will only choose EndpointSlices with a non-empty
-// "kubernetes.io/service-name" label
-func withServiceNameSelector() func(options *metav1.ListOptions) {
+// "kubernetes.io/service-name" label and without "service.kubernetes.io/headless"
+// label.
+func withServiceNameAndNoHeadlessServiceSelector() func(options *metav1.ListOptions) {
 	// LabelServiceName must exist
 	svcNameLabel, err := labels.NewRequirement(discovery.LabelServiceName, selection.Exists, nil)
 	if err != nil {
@@ -2258,30 +2259,35 @@ func withServiceNameSelector() func(options *metav1.ListOptions) {
 		// cannot occur
 		panic(err)
 	}
+	// headless service label must not be there
+	noHeadlessService, err := labels.NewRequirement(corev1.IsHeadlessService, selection.DoesNotExist, nil)
+	if err != nil {
+		// cannot occur
+		panic(err)
+	}
 
-	selector := labels.NewSelector().Add(*svcNameLabel, *notEmptySvcName)
+	selector := labels.NewSelector().Add(*svcNameLabel, *notEmptySvcName, *noHeadlessService)
 
 	return func(options *metav1.ListOptions) {
 		options.LabelSelector = selector.String()
 	}
 }
 
-// // noHeadlessServiceSelector returns a LabelSelector (added to the
-// // watcher for EndpointSlices) that will only choose EndpointSlices without "service.kubernetes.io/headless"
-// // label.
-//
-//	func noHeadlessServiceSelector() func(options *metav1.ListOptions) {
-//		// headless service label must not be there
-//		noHeadlessService, err := labels.NewRequirement(corev1.IsHeadlessService, selection.DoesNotExist, nil)
-//		if err != nil {
-//			// cannot occur
-//			panic(err)
-//		}
-//
-//		return func(options *metav1.ListOptions) {
-//			options.LabelSelector = noHeadlessService.String()
-//		}
-//	}
+// noHeadlessServiceSelector returns a LabelSelector (added to the
+// watcher for EndpointSlices) that will only choose EndpointSlices without "service.kubernetes.io/headless"
+// label.
+func noHeadlessServiceSelector() func(options *metav1.ListOptions) {
+	// headless service label must not be there
+	noHeadlessService, err := labels.NewRequirement(corev1.IsHeadlessService, selection.DoesNotExist, nil)
+	if err != nil {
+		// cannot occur
+		panic(err)
+	}
+
+	return func(options *metav1.ListOptions) {
+		options.LabelSelector = noHeadlessService.String()
+	}
+}
 
 // noAlternateProxySelector is a LabelSelector added to the watch for
 // services that excludes services with a well-known label indicating
@@ -2347,14 +2353,14 @@ func waitForCacheSyncWithTimeout(factory waitForCacheSyncer, stopCh <-chan struc
 }
 
 // getEndpointSliceSelector returns an EndpointSlice selector function used in watchers.
-// When network segmentation is enabled it returns a nil selector that select all EndpointSlices.
-// Otherwise, it returns a selector that excludes EndpointSlices a with missing default service name.
+// When network segmentation is enabled it returns a selector that ignores EndpointSlices for headless services.
+// Otherwise, it returns a selector that excludes EndpointSlices a with missing default service name too.
 func getEndpointSliceSelector() func(options *metav1.ListOptions) {
-	endpointSliceSelector := withServiceNameSelector()
+	endpointSliceSelector := withServiceNameAndNoHeadlessServiceSelector()
 	if util.IsNetworkSegmentationSupportEnabled() {
 		// When network segmentation is enabled we need to watch for mirrored EndpointSlices that do not contain the
 		// default service name.
-		endpointSliceSelector = nil
+		endpointSliceSelector = noHeadlessServiceSelector()
 	}
 	return endpointSliceSelector
 }
