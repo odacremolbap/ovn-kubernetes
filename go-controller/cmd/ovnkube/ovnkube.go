@@ -342,6 +342,13 @@ func startOvnKube(ctx *cli.Context, cancel context.CancelFunc) error {
 	if err != nil {
 		return err
 	}
+	if !runMode.clusterManager {
+		// A new node lists cluster-wide objects from API servers that are busy with
+		// every other node. Cluster-manager keeps the shorter timeout, because it waits
+		// for its informers while it holds the leader lease.
+		types.InformerSyncTimeout = types.NodeInformerSyncTimeout
+	}
+	klog.Infof("Informer cache sync timeout: %v", types.InformerSyncTimeout)
 	eventRecorder := util.EventRecorder(ovnClientset.KubeClient)
 
 	if config.Metrics.BindAddress != "" && !combineMetricsEndpoints(runMode) {

@@ -362,14 +362,16 @@ const (
 	// Logical Switch or Router Port
 	MaxLogicalPortTunnelKey = 32767
 
-	// InformerSyncTimeout is used when waiting for the initial informer cache sync
-	// (i.e. all existing objects should be listed by the informer).
-	// It allows ~5 list() retries with the default reflector exponential backoff config
-	// Also considers listing a high number of items on high load scenarios
-	// (last observed 4k egress firewall taking > 30s)
-	// TODO: consider not using a timeout, potentially shifting to configurable
-	// readiness probe
-	InformerSyncTimeout = 120 * time.Second
+	// NodeInformerSyncTimeout replaces InformerSyncTimeout in every ovnkube process
+	// that does not run cluster-manager (the hybrid-overlay-node binary keeps
+	// InformerSyncTimeout). A new node lists cluster-wide objects (all pods, for
+	// example) from API servers that are busy with every other node, and on
+	// clusters with thousands of nodes that took longer than 120 s. Each timed
+	// initial cache wait gets this long on its own, and WatchFactory.Start runs
+	// them one after another, so it does not bound the whole start. It leaves room
+	// for the slow pod list inside the ovnkube-node startup probe's 30 minute
+	// default budget.
+	NodeInformerSyncTimeout = 15 * time.Minute
 
 	// HandlerSyncTimeout is used when waiting for initial object handler sync.
 	// (i.e. all the ADD events should be processed for the existing objects by the event handler)
@@ -478,3 +480,15 @@ const (
 var (
 	MetricOvnkubeSubsystemController = "controller"
 )
+
+// InformerSyncTimeout is used when waiting for the initial informer cache sync
+// (i.e. all existing objects should be listed by the informer).
+// It allows ~5 list() retries with the default reflector exponential backoff config
+// Also considers listing a high number of items on high load scenarios
+// (last observed 4k egress firewall taking > 30s)
+// It is a variable so that ovnkube can set NodeInformerSyncTimeout at startup in
+// processes that do not run cluster-manager, before any informer starts. Do not
+// change it after that.
+// TODO: consider not using a timeout, potentially shifting to configurable
+// readiness probe
+var InformerSyncTimeout = 120 * time.Second
