@@ -212,10 +212,10 @@ false
 			<td>global.enableLFlowCache</td>
 			<td>bool</td>
 			<td><pre lang="json">
-false
+true
 </pre>
 </td>
-			<td>Enables the OVN logical flow cache</td>
+			<td>Enables the OVN logical flow cache. Without it, ovn-controller translates every logical flow again on each full recompute, and a node join causes one on every node.</td>
 		</tr>
 		<tr>
 			<td>global.enableMulticast</td>
@@ -423,6 +423,15 @@ false
 </pre>
 </td>
 			<td>kubelet cgroup path ovnkube-node should use</td>
+		</tr>
+		<tr>
+			<td>global.lFlowCacheLimitKb</td>
+			<td>string</td>
+			<td><pre lang="json">
+"262144"
+</pre>
+</td>
+			<td>Maximum size of ovn-controller's logical flow cache in KiB ("" leaves OVN's default, unlimited). OVN checks it against its own estimate of the cache size, which undercounts some entries, so ovn-controller can use more memory than this. Quote the value (--set-string): the schema types it as a string.</td>
 		</tr>
 		<tr>
 			<td>global.managedBGPASNumber</td>

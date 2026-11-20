@@ -98,8 +98,15 @@ global:
   enableEgressService: false
   # -- Enables multicast support between the pods within the same namespace
   enableMulticast: false
-  # -- Enables the OVN logical flow cache
-  enableLFlowCache: false
+  # -- Enables the OVN logical flow cache. Without it, ovn-controller translates
+  # every logical flow again on each full recompute, and a node join causes one on
+  # every node.
+  enableLFlowCache: true
+  # -- Maximum size of ovn-controller's logical flow cache in KiB ("" leaves OVN's
+  # default, unlimited). OVN checks it against its own estimate of the cache size,
+  # which undercounts some entries, so ovn-controller can use more memory than this.
+  # Quote the value (--set-string): the schema types it as a string.
+  lFlowCacheLimitKb: "262144"
   # -- If set, then load balancers do not get deleted when all backends are removed
   emptyLbEvents: false
   # -- If set, enable persistent IPs

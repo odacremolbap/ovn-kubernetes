@@ -53,25 +53,28 @@ ovnkubeSingleNodeZoneSbdb:
 ovnkubeSingleNodeZoneNorthd:
   logging:
     level: "-vconsole:info -vfile:info"
-  # -- resource requests and limits for the ovn-northd container
+  # -- resource requests and limits for the ovn-northd container. At 5,000 nodes,
+  # northd was throttled at a 0.5 core limit while nodes joined.
   resources:
     requests:
-      cpu: 20m
+      cpu: "100m"
       memory: 200Mi
     limits:
-      cpu: 500m
+      cpu: "1"
       memory: 512Mi
 
 ovnkubeSingleNodeZoneOvnHost:
   logging:
     level: "-vconsole:info"
-  # -- resource requests and limits for the ovn-controller container
+  # -- resource requests and limits for the ovn-controller container. ovn-controller
+  # recomputes all logical flows when a node joins. At 5,000 nodes each recompute
+  # took about 6 s and was throttled at a 0.5 core limit.
   resources:
     requests:
-      cpu: 60m
+      cpu: "250m"
       memory: 256Mi
     limits:
-      cpu: 500m
+      cpu: "2"
       memory: 1Gi
 
 affinity:

@@ -205,7 +205,11 @@
         },
         "enableLFlowCache": {
           "type": "boolean",
-          "description": "Enables the OVN logical flow cache"
+          "description": "Enables the OVN logical flow cache. Without it, ovn-controller translates every logical flow again on each full recompute, and a node join causes one on every node."
+        },
+        "lFlowCacheLimitKb": {
+          "type": "string",
+          "description": "Maximum size of ovn-controller's logical flow cache in KiB (\"\" leaves OVN's default, unlimited). OVN checks it against its own estimate of the cache size, which undercounts some entries, so ovn-controller can use more memory than this. Quote the value (--set-string): the schema types it as a string."
         },
         "emptyLbEvents": {
           "type": "boolean",
@@ -918,7 +922,7 @@
                   }
                 }
               },
-              "description": "resource requests and limits for the ovn-northd container"
+              "description": "resource requests and limits for the ovn-northd container. At 5,000 nodes, northd was throttled at a 0.5 core limit while nodes joined."
             },
             "image": {
               "type": "object",
@@ -975,7 +979,7 @@
                   }
                 }
               },
-              "description": "resource requests and limits for the ovn-controller container"
+              "description": "resource requests and limits for the ovn-controller container. ovn-controller recomputes all logical flows when a node joins. At 5,000 nodes each recompute took about 6 s and was throttled at a 0.5 core limit."
             },
             "image": {
               "type": "object",
