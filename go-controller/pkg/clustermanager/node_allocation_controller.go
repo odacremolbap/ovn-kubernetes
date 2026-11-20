@@ -24,8 +24,17 @@ import (
 )
 
 const (
-	// Maximum node IDs that can be generated. Limited to maximum nodes supported by k8s.
-	maxNodeIDs = 5000
+	// Maximum node IDs that can be generated. IDs 0 and 1 are reserved, so nodes get
+	// IDs 2..maxNodeIDs. The node ID is used as:
+	//   - the transit switch port tunnel key, and 10+ID as the primary L2 UDN transit
+	//     router port key, so maxNodeIDs+10 must not exceed types.MaxLogicalPortTunnelKey;
+	//   - an offset into the default and UDN join subnets and the transit subnet;
+	//   - for primary L2 UDNs, the index of a /31 (/127) pair at offset 2*ID in the
+	//     transit subnet, so that subnet needs 2*maxNodeIDs+2 addresses.
+	// With the default /16 join and transit subnets, 8000 fits all of these.
+	// networkconnect still caps its own tunnel keys at 5000 nodes, so keep it off on
+	// clusters with node IDs above 5000.
+	maxNodeIDs = 8000
 )
 
 // nodeAllocationController allocates node IDs and transit switch port addresses.
